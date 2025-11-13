@@ -1,0 +1,62 @@
+# Hardware Configuration Template
+# This file will be auto-generated during NixOS installation
+# The actual file (hardware-configuration.nix) should NOT be committed to git
+# This is just an example of what it might look like
+
+# IMPORTANT: During NixOS installation, the installer will generate
+# a hardware-configuration.nix file specific to your machine.
+# DO NOT use this example file directly!
+
+{ config, lib, pkgs, modulesPath, ... }:
+
+{
+  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
+
+  # Kernel modules and boot settings
+  boot.initrd.availableKernelModules = [ "xhci_pci" "ahci" "nvme" "usb_storage" "sd_mod" "rtsx_pci_sdmmc" ];
+  boot.initrd.kernelModules = [ ];
+  boot.kernelModules = [ "kvm-intel" ]; # or "kvm-amd" for AMD CPUs
+  boot.extraModulePackages = [ ];
+
+  # Example dual boot partition layout for UEFI system
+  # These will be different on your system!
+  fileSystems."/" =
+    { device = "/dev/disk/by-uuid/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx";
+      fsType = "ext4";
+    };
+
+  fileSystems."/boot" =  # or "/boot/efi" depending on your setup
+    { device = "/dev/disk/by-uuid/XXXX-XXXX";  # EFI partition (shared with Windows)
+      fsType = "vfat";
+    };
+
+  # Optional: Mount your Windows partition (read-only is safer)
+  # fileSystems."/mnt/windows" =
+  #   { device = "/dev/disk/by-uuid/XXXXXXXXXXXXXXXX";
+  #     fsType = "ntfs-3g";
+  #     options = [ "ro" "uid=1000" "gid=100" "dmask=022" "fmask=133" ];
+  #   };
+
+  # Swap partition
+  swapDevices = [
+    { device = "/dev/disk/by-uuid/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"; }
+  ];
+
+  # OR swap file (alternative to swap partition)
+  # swapDevices = [ { device = "/swapfile"; size = 16384; } ]; # 16GB
+
+  # CPU microcode updates
+  hardware.cpu.intel.updateMicrocode = true; # or hardware.cpu.amd.updateMicrocode for AMD
+
+  # Graphics
+  # Uncomment one of these based on your GPU:
+  # hardware.opengl.enable = true; # For Intel/AMD integrated graphics
+  # services.xserver.videoDrivers = [ "nvidia" ]; # For NVIDIA (also enable nvidia.nix module)
+  # services.xserver.videoDrivers = [ "amdgpu" ]; # For AMD dedicated GPU
+
+  # Networking
+  networking.useDHCP = lib.mkDefault true;
+  # networking.interfaces.wlp0s20f3.useDHCP = lib.mkDefault true; # WiFi interface name varies
+
+  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+}

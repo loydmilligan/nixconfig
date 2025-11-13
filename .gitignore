@@ -1,0 +1,22 @@
+# Ignore auto-generated hardware configuration
+# This file is machine-specific and should be generated on each system
+hardware-configuration.nix
+
+# Ignore result symlinks from nix-build
+result
+result-*
+
+# Ignore temporary files
+*~
+*.swp
+*.swo
+.*.swp
+
+# Ignore editor directories
+.vscode/
+.idea/
+*.code-workspace
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
