@@ -5,6 +5,11 @@
   home.homeDirectory = "/home/mmariani";
   home.stateVersion = "24.05";
 
+  # Add npm global packages to PATH
+  home.sessionPath = [
+    "$HOME/.npm-global/bin"
+  ];
+
   programs.home-manager.enable = true;
 
   # Packages
