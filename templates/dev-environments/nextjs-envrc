@@ -1,0 +1,14 @@
+# Load Nix development shell from flake.nix
+use flake
+
+# Load environment variables from .env.local if it exists
+dotenv_if_exists .env.local
+
+# Also load .env if it exists
+dotenv_if_exists
+
+# Watch flake.nix for changes (auto-reload)
+watch_file flake.nix
+
+# Add node_modules/.bin to PATH
+PATH_add node_modules/.bin
