@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, pkgs-unstable, ... }:
 
 {
   home.username = "mmariani";
@@ -21,8 +21,15 @@
     ripgrep
     fd
     fzf
+    home-manager
     jq
     
+    # LSP servers (for neovim)
+    pyright                              # Python
+    nodePackages.typescript-language-server  # TypeScript/JS
+    nil                                  # Nix
+    lua-language-server                  # Lua (for editing nvim config!)
+   
     # Terminal
     tmux
     
@@ -43,19 +50,155 @@
     extraConfig = {
       init.defaultBranch = "main";
       pull.rebase = true;
+      gpg.format = "ssh";
+      user.signingkey = "~/.ssh/id_ed25519.pub";
+      commit.gpgsign = true;
     };
   };
-
-  # Neovim
   programs.neovim = {
+    package = pkgs-unstable.neovim-unwrapped;
     enable = true;
     defaultEditor = true;
     viAlias = true;
     vimAlias = true;
-    
+  
     plugins = with pkgs.vimPlugins; [
       lazy-nvim
+      plenary-nvim
+      nvim-web-devicons
+      (nvim-treesitter.withAllGrammars)
     ];
+  
+    extraLuaConfig = ''
+      vim.g.mapleader = " "
+      vim.g.maplocalleader = " "
+    
+      vim.opt.number = true
+      vim.opt.relativenumber = true
+      vim.opt.expandtab = true
+      vim.opt.shiftwidth = 2
+      vim.opt.tabstop = 2
+      vim.opt.smartindent = true
+      vim.opt.ignorecase = true
+      vim.opt.smartcase = true
+      vim.opt.hlsearch = false
+      vim.opt.termguicolors = true
+      vim.opt.mouse = "a"
+      vim.opt.cursorline = true
+      vim.opt.signcolumn = "yes"
+    
+      local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+      if not vim.loop.fs_stat(lazypath) then
+        vim.fn.system({
+          "git", "clone", "--filter=blob:none",
+          "https://github.com/folke/lazy.nvim.git",
+          "--branch=stable",
+          lazypath,
+        })
+      end
+      vim.opt.rtp:prepend(lazypath)
+    
+      require("lazy").setup({
+        {
+          "catppuccin/nvim",
+          name = "catppuccin",
+          priority = 1000,
+          config = function()
+            require("catppuccin").setup({
+              flavour = "mocha",
+            })
+            vim.cmd.colorscheme("catppuccin")
+          end,
+        },
+      
+        {
+          "nvim-telescope/telescope.nvim",
+          dependencies = { "nvim-lua/plenary.nvim" },
+          keys = {
+            { "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
+            { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep" },
+            { "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
+          },
+        },
+      
+        {
+          "nvim-tree/nvim-tree.lua",
+          keys = {
+            { "<leader>e", "<cmd>NvimTreeToggle<cr>", desc = "File Tree" },
+          },
+          config = function()
+            require("nvim-tree").setup()
+          end,
+        },
+      
+        {
+          "nvim-lualine/lualine.nvim",
+          config = function()
+            require("lualine").setup({
+              options = { theme = "catppuccin" }
+            })
+          end,
+        },
+      
+        {
+          "hrsh7th/nvim-cmp",
+          dependencies = {
+            "hrsh7th/cmp-nvim-lsp",
+            "hrsh7th/cmp-buffer",
+            "hrsh7th/cmp-path",
+            "L3MON4D3/LuaSnip",
+            "saadparwaiz1/cmp_luasnip",
+          },
+          config = function()
+            local cmp = require("cmp")
+            cmp.setup({
+              snippet = {
+                expand = function(args)
+                  require("luasnip").lsp_expand(args.body)
+                end,
+              },
+              mapping = cmp.mapping.preset.insert({
+                ["<C-Space>"] = cmp.mapping.complete(),
+                ["<CR>"] = cmp.mapping.confirm({ select = true }),
+                ["<Tab>"] = cmp.mapping.select_next_item(),
+                ["<S-Tab>"] = cmp.mapping.select_prev_item(),
+              }),
+              sources = {
+                { name = "nvim_lsp" },
+                { name = "luasnip" },
+                { name = "buffer" },
+                { name = "path" },
+              },
+            })
+          end,
+        },
+        {
+          "neovim/nvim-lspconfig",
+          config = function()
+            -- Use new vim.lsp.config API (nvim 0.11+)
+            vim.lsp.config.pyright = {}
+            vim.lsp.config.ts_ls = {}
+            vim.lsp.config.nil_ls = {}
+    
+            -- Enable the LSP servers
+            vim.lsp.enable('pyright')
+            vim.lsp.enable('ts_ls')
+            vim.lsp.enable('nil_ls')
+    
+            -- LSP Keybindings
+            vim.api.nvim_create_autocmd("LspAttach", {
+              callback = function(args)
+                local opts = { buffer = args.buf }
+                vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+                vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+                vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+                vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+              end,
+            })
+          end,
+        },     
+      })
+    '';
   };
 
   # Tmux
@@ -122,16 +265,36 @@
       l = "eza -lbF --git --icons";
       llm = "eza -lbGd --git --sort=modified";
       lls = "eza -lbhHigmuSa --time-style=long-iso --git --color-scale";
-      
-      # Git
+  
+      # Git shortcuts
       gd = "git diff";
       gcmsg = "git commit -m";
       gitc = "git checkout";
-      
-      # NixOS
-      nrs = "sudo nixos-rebuild switch --flake .#nixos-dev";
-      nrb = "sudo nixos-rebuild build --flake .#nixos-dev";
-      nrt = "sudo nixos-rebuild test --flake .#nixos-dev";
+  
+      # NixOS system rebuilds
+      nrs = "cd ~/nixconfig && sudo nixos-rebuild switch --flake .#nixos-dev";
+      nrb = "cd ~/nixconfig && sudo nixos-rebuild build --flake .#nixos-dev";
+      nrt = "cd ~/nixconfig && sudo nixos-rebuild test --flake .#nixos-dev";
+  
+      # Home Manager rebuilds
+      hms = "cd ~/nixconfig && sudo nixos-rebuild switch --flake .#nixos-dev";
+      hmb = "cd ~/nixconfig && sudo nixos-rebuild build --flake .#nixos-dev";
+  
+      # Combined rebuild
+      rebuild = "cd ~/nixconfig && sudo nixos-rebuild switch --flake .#nixos-dev && home-manager switch --flake .#mmariani";
+  
+      # Nix utilities
+      ngc = "sudo nix-collect-garbage -d";
+      nfu = "cd ~/nixconfig && nix flake update";
+  
+      # Quick config editing
+      nconf = "cd ~/nixconfig && nvim .";
+      nhome = "nvim ~/nixconfig/home/mmariani/home.nix";
+      nsys = "nvim ~/nixconfig/hosts/proxmox-dev/configuration.nix";
+  
+      # Git workflow
+      cfgs = "cd ~/nixconfig && git status";
+      cfgp = "cd ~/nixconfig && git push";
     };
     
     initExtra = ''
