@@ -1,6 +1,20 @@
 { config, pkgs, ... }:
 
 {
+  imports = [
+    # Development environment modules
+    ../../modules/development/tools.nix
+    ../../modules/development/claude-code.nix
+  ];
+
+  # ============================================================================
+  # Development Environment
+  # ============================================================================
+
+  # Enable development tools and Claude Code
+  development.tools.enable = true;
+  development.claude-code.enable = true;
+
   # Bootloader
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
